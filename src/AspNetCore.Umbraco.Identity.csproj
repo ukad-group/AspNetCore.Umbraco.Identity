@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Authors>Ukad-Group</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReleaseNotes>initial release,
+members store and password hasher basic implementation</PackageReleaseNotes>
+    <PackageTags>Umbraco; AspNetCore; Identity</PackageTags>
+    <RepositoryType>C#</RepositoryType>
+    <PackageProjectUrl>https://github.com/ukad-group/AspNetCore.Umbraco.Identity</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/ukad-group/AspNetCore.Umbraco.Identity</RepositoryUrl>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Description>Contains members store, roles store and password hashe for accessing umbraco members via AspNet Core Identity with no umbraco lib</Description>
+    <Version>0.5.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="2.2.0" />
+    <PackageReference Include="UkadGroup.IRepository" Version="1.0.0" />
+  </ItemGroup>
+
+</Project>

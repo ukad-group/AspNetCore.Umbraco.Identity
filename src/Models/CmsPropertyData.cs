@@ -6,8 +6,10 @@ namespace AspNetCore.Umbraco.Identity.Models
     {
         public int Id { get; set; }
         public int ContentNodeId { get; set; }
+        public CmsMember CmsMember { get; set; }
         public Guid VersionId { get; set; }
         public int PropertyTypeId { get; set; }
+        public CmsPropertyType PropertyType { get; set; }
         public int? DataInt { get; set; }
         public DateTime? DataDate { get; set; }
         public string DataNvarchar { get; set; }

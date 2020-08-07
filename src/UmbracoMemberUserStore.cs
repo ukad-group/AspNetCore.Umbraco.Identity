@@ -460,6 +460,11 @@ namespace AspNetCore.Umbraco.Identity
 
             cmsContentVersion.VersionDate = DateTime.UtcNow;
 
+            member.Email = user.Email;
+            member.LoginName = user.Alias;
+            member.Password = user.PasswordHash;
+
+            membersRepository.Update(member);
             propertyDataRepository.Update(propertiesToUpdate);
             await propertyDataRepository.SaveChangesAsync(cancellationToken);
 

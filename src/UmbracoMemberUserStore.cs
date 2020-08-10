@@ -8,10 +8,9 @@ using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
-
+using AspNetCore.Umbraco.Identity.AppModels;
 using AspNetCore.Umbraco.Identity.Models;
-
-using AutoMapper;
+using AspNetCore.Umbraco.Identity.Utils;
 
 using Microsoft.AspNetCore.Identity;
 
@@ -30,27 +29,18 @@ namespace AspNetCore.Umbraco.Identity
         private readonly IRepository<CmsPropertyType> propertyTypeRepository;
         private readonly IRepository<CmsMember2MemberGroup> member2MemberGroupRepository;
         private readonly IRepository<UmbracoNode> umbracoNodeRepository;
-        private readonly IRepository<CmsContent> contentRespository;
-        private readonly IRepository<CmsContentVersion> contentVersionRespository;
-        private readonly IRepository<CmsContentXml> contentXmlRespository;
-        private readonly IRepository<CmsContentType> contentTypeRespository;
+        private readonly IRepository<CmsContent> contentRepository;
+        private readonly IRepository<CmsContentVersion> contentVersionRepository;
+        private readonly IRepository<CmsContentXml> contentXmlRepository;
+        private readonly IRepository<CmsContentType> contentTypeRepository;
 
         private const int DefaultMemberContentTypeId = 1095;
 
-        private class MemberProperty
-        {
-            public CmsMember Member;
-            public CmsPropertyData PropertyData;
-            public CmsPropertyType PropertyType;
-        }
-
-        private static readonly IMapper mapper = BuildAutoMapperConfiguration().CreateMapper();
-
         public UmbracoMemberUserStore(
-            IRepository<CmsContent> contentRespository,
-            IRepository<CmsContentVersion> contentVersionRespository,
-            IRepository<CmsContentXml> contentXmlRespository,
-            IRepository<CmsContentType> contentTypeRespository,
+            IRepository<CmsContent> contentRepository,
+            IRepository<CmsContentVersion> contentVersionRepository,
+            IRepository<CmsContentXml> contentXmlRepository,
+            IRepository<CmsContentType> contentTypeRepository,
             IRepository<CmsMember> membersRepository,
             IRepository<CmsPropertyData> propertyDataRepository,
             IRepository<CmsPropertyType> propertyTypeRepository,
@@ -63,30 +53,13 @@ namespace AspNetCore.Umbraco.Identity
             this.propertyTypeRepository = propertyTypeRepository;
             this.member2MemberGroupRepository = member2MemberGroupRepository;
             this.umbracoNodeRepository = umbracoNodeRepository;
-            this.contentRespository = contentRespository;
-            this.contentVersionRespository = contentVersionRespository;
-            this.contentXmlRespository = contentXmlRespository;
-            this.contentTypeRespository = contentTypeRespository;
+            this.contentRepository = contentRepository;
+            this.contentVersionRepository = contentVersionRepository;
+            this.contentXmlRepository = contentXmlRepository;
+            this.contentTypeRepository = contentTypeRepository;
         }
 
-        private static MapperConfiguration BuildAutoMapperConfiguration()
-        {
-            var config = new MapperConfiguration(cfg =>
-            {
-                cfg.CreateMap<CmsMember, TUser>()
-                    .ForMember(x => x.Email, opt => opt.MapFrom(c => c.Email))
-                    .ForMember(x => x.Alias, opt => opt.MapFrom(c => c.LoginName))
-                    .ForMember(x => x.Id, opt => opt.MapFrom(c => c.NodeId))
-                    .ForMember(x => x.PasswordHash, opt => opt.MapFrom(c => c.Password))
-                    .ForAllOtherMembers(x => x.Ignore());
-            });
-
-            config.AssertConfigurationIsValid();
-
-            return config;
-        }
-
-        public IQueryable<TUser> Users => mapper.ProjectTo<TUser>(membersRepository.GetAll());
+        public IQueryable<TUser> Users => MappingUtils<TUser>.Mapper.ProjectTo<TUser>(membersRepository.GetAll());
 
         public async Task<IdentityResult> CreateAsync(TUser user, CancellationToken cancellationToken)
         {
@@ -118,7 +91,7 @@ namespace AspNetCore.Umbraco.Identity
                 NodeId = umbracoNode.Id
             };
 
-            await contentRespository.AddAsync(content, cancellationToken);
+            await contentRepository.AddAsync(content, cancellationToken);
 
             var xmlWriterSettings = new System.Xml.XmlWriterSettings
             {
@@ -162,7 +135,7 @@ namespace AspNetCore.Umbraco.Identity
                     Xml = sw.ToString()
                 };
 
-                await contentXmlRespository.AddAsync(contentXml, cancellationToken);
+                await contentXmlRepository.AddAsync(contentXml, cancellationToken);
             }
 
 
@@ -192,7 +165,7 @@ namespace AspNetCore.Umbraco.Identity
                 VersionId = Guid.NewGuid()
             };
 
-            await contentVersionRespository.AddAsync(cmsContentVersion, cancellationToken);
+            await contentVersionRepository.AddAsync(cmsContentVersion, cancellationToken);
 
             foreach (var pt in propertyTypes)
             {
@@ -239,40 +212,6 @@ namespace AspNetCore.Umbraco.Identity
 
         }
 
-        private TUser CreateUserFromProperties(IEnumerable<MemberProperty> memberProperties)
-        {
-            if (!memberProperties.Any())
-            {
-                return null;
-            }
-
-            var property = memberProperties.First();
-
-            var member = mapper.Map<TUser>(property.Member);
-
-            foreach (var prop in memberProperties)
-            {
-                var propertyInfo = member.GetType().GetProperty(prop.PropertyType.Alias, BindingFlags.IgnoreCase | BindingFlags.Instance | BindingFlags.Public);
-                if (propertyInfo != null)
-                {
-                    switch (propertyInfo.PropertyType)
-                    {
-                        case Type boolType when boolType == typeof(bool):
-                            propertyInfo.SetValue(member, Convert.ChangeType(prop.PropertyData.DataInt ?? 0, propertyInfo.PropertyType), null);
-                            break;
-                        case Type dateType when dateType == typeof(DateTime):
-                            propertyInfo.SetValue(member, Convert.ChangeType(prop.PropertyData.DataDate, propertyInfo.PropertyType), null);
-                            break;
-                        default:
-                            propertyInfo.SetValue(member, Convert.ChangeType(prop.PropertyData.DataNvarchar, propertyInfo.PropertyType), null);
-                            break;
-                    }
-                }
-            }
-
-            return member;
-        }
-
         public async Task<TUser> FindByEmailAsync(string normalizedEmail, CancellationToken cancellationToken)
         {
             var query = from m in membersRepository.GetAllAsNoTracking()
@@ -288,7 +227,7 @@ namespace AspNetCore.Umbraco.Identity
 
             var memberProperties = await membersRepository.ToListAsync(query, cancellationToken);
 
-            return CreateUserFromProperties(memberProperties);
+            return UmbracoUtils.CreateUserFromProperties<TUser>(memberProperties);
         }
 
         public async Task<TUser> FindByIdAsync(string userId, CancellationToken cancellationToken)
@@ -311,7 +250,7 @@ namespace AspNetCore.Umbraco.Identity
 
             var memberProperties = await membersRepository.ToListAsync(query, cancellationToken);
 
-            return CreateUserFromProperties(memberProperties);
+            return UmbracoUtils.CreateUserFromProperties<TUser>(memberProperties);
         }
 
         public async Task<TUser> FindByNameAsync(string normalizedUserName, CancellationToken cancellationToken)
@@ -330,7 +269,7 @@ namespace AspNetCore.Umbraco.Identity
 
             var memberProperties = await membersRepository.ToListAsync(query, cancellationToken);
 
-            return CreateUserFromProperties(memberProperties);
+            return UmbracoUtils.CreateUserFromProperties<TUser>(memberProperties);
         }
 
         public Task<string> GetEmailAsync(TUser user, CancellationToken cancellationToken)
@@ -421,8 +360,8 @@ namespace AspNetCore.Umbraco.Identity
             var properties = user.GetType().GetProperties(BindingFlags.IgnoreCase | BindingFlags.Instance | BindingFlags.Public)
                 .ToDictionary(pt => pt.Name.ToLower(), pt => pt);
 
-            var cmsContentVersion = await contentVersionRespository.FirstOrDefaultAsync(
-                contentVersionRespository.GetAll().Where(x => x.ContentId == member.NodeId),
+            var cmsContentVersion = await contentVersionRepository.FirstOrDefaultAsync(
+                contentVersionRepository.GetAll().Where(x => x.ContentId == member.NodeId),
                 cancellationToken);
 
             var propertiesToUpdate = new List<CmsPropertyData>();
@@ -502,8 +441,8 @@ namespace AspNetCore.Umbraco.Identity
         public async Task<IList<string>> GetRolesAsync(TUser user, CancellationToken cancellationToken)
         {
             var query = from m in membersRepository.GetAll()
-                        join c in contentRespository.GetAll() on m.NodeId equals c.NodeId
-                        join ct in contentTypeRespository.GetAll() on c.ContentType equals ct.NodeId
+                        join c in contentRepository.GetAll() on m.NodeId equals c.NodeId
+                        join ct in contentTypeRepository.GetAll() on c.ContentType equals ct.NodeId
                         join m2m in member2MemberGroupRepository.GetAll() on m.NodeId equals m2m.Member into grouping
                         from m2m in grouping.DefaultIfEmpty()
                         join un in umbracoNodeRepository.GetAll() on m2m.MemberGroup equals un.Id into grouping2
@@ -535,8 +474,8 @@ namespace AspNetCore.Umbraco.Identity
         public async Task<bool> IsInRoleAsync(TUser user, string roleName, CancellationToken cancellationToken)
         {
             var query = from m in membersRepository.GetAll()
-                        join c in contentRespository.GetAll() on m.NodeId equals c.NodeId
-                        join ct in contentTypeRespository.GetAll() on c.ContentType equals ct.NodeId
+                        join c in contentRepository.GetAll() on m.NodeId equals c.NodeId
+                        join ct in contentTypeRepository.GetAll() on c.ContentType equals ct.NodeId
                         join m2m in member2MemberGroupRepository.GetAll() on m.NodeId equals m2m.Member into grouping
                         from m2m in grouping.DefaultIfEmpty()
                         join un in umbracoNodeRepository.GetAll() on m2m.MemberGroup equals un.Id
@@ -553,8 +492,8 @@ namespace AspNetCore.Umbraco.Identity
         public async Task<IList<TUser>> GetUsersInRoleAsync(string roleName, CancellationToken cancellationToken)
         {
             var query = from m in membersRepository.GetAll()
-                        join c in contentRespository.GetAll() on m.NodeId equals c.NodeId
-                        join ct in contentTypeRespository.GetAll() on c.ContentType equals ct.NodeId
+                        join c in contentRepository.GetAll() on m.NodeId equals c.NodeId
+                        join ct in contentTypeRepository.GetAll() on c.ContentType equals ct.NodeId
                         join m2m in member2MemberGroupRepository.GetAll() on m.NodeId equals m2m.Member into grouping
                         from m2m in grouping.DefaultIfEmpty()
                         join un in umbracoNodeRepository.GetAll() on m2m.MemberGroup equals un.Id into grouping2
@@ -573,7 +512,7 @@ namespace AspNetCore.Umbraco.Identity
 
             var membersProp = memberProperties.GroupBy(x => x.Member.NodeId, x => x);
 
-            return membersProp.Select(CreateUserFromProperties).ToList();
+            return membersProp.Select(x => UmbracoUtils.CreateUserFromProperties<TUser>(x.ToList())).ToList();
         }
 
         public async Task<IList<Claim>> GetClaimsAsync(TUser user, CancellationToken cancellationToken)

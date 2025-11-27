@@ -20,8 +20,6 @@ namespace Microsoft.Extensions.DependencyInjection
 
             services.AddScoped(typeof(IUserStore<TUser>), typeof(UmbracoMemberUserStore<TUser>));
             services.AddScoped(typeof(IPasswordHasher<TUser>), typeof(UmbracoPasswordHasher<TUser>));
-            //services.AddScoped(typeof(IUserRoleStore<TUser>), typeof(ApplicationUserStore<TUser>));
-            //services.AddScoped(typeof(IRoleStore<string>), typeof(ApplicationRoleStore));
             return services;
         }
     }

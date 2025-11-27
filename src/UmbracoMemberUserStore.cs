@@ -119,7 +119,7 @@ namespace AspNetCore.Umbraco.Identity
                     Template = 0,
                     Version = umbracoNode.UniqueId,
                     WriterId = 0,
-                    WriterName = "kkadmin",
+                    WriterName = "admin",
                     UrlName = umbracoNode.Text,
                     UpdateDate = umbracoNode.CreateDate
 

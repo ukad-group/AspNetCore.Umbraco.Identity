@@ -12,7 +12,7 @@
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Description>Contains members store, roles store and password hashe for accessing umbraco members via AspNet Core Identity with no umbraco lib</Description>
+    <Description>Contains member store, role store and password hasher for accessing Umbraco members via ASP.NET Core Identity without Umbraco dependencies</Description>
     <Version>0.5.3</Version>
   </PropertyGroup>
 
